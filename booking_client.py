@@ -1,21 +1,40 @@
 import os
 import mysql.connector
-from mysql.connector import Error
 
-config = dict(host=os.getenv('MYSQL_HOST','localhost'), user=os.getenv('MYSQL_USER','root'), password=os.getenv('MYSQL_PASSWORD',''), database='LittleLemonDB')
+conn = mysql.connector.connect(
+    host=os.getenv("MYSQL_HOST", "localhost"),
+    user=os.getenv("MYSQL_USER", "root"),
+    password=os.getenv("MYSQL_PASSWORD", ""),
+    database="LittleLemonDB"
+)
 
-def main():
-    try:
-        with mysql.connector.connect(**config) as conn:
-            cur=conn.cursor()
-            print('Connected to LittleLemonDB')
-            cur.callproc('CheckBooking',['2026-10-20','18:00:00',1])
-            for result in cur.stored_results():
-                print('Booking availability:',result.fetchall())
-            cur.execute('SELECT COUNT(*) FROM Bookings')
-            print('Bookings:',cur.fetchone()[0])
-            cur.close()
-    except Error as e:
-        print('Database error:',e)
+cursor = conn.cursor()
 
-if __name__=='__main__': main()
+def run(sql, params=()):
+    cursor.execute(sql, params)
+    if cursor.with_rows:
+        print(cursor.fetchall())
+    while cursor.nextset():
+        if cursor.with_rows:
+            print(cursor.fetchall())
+
+run("CALL GetMaxQuantity()")
+
+run(
+    "CALL AddBooking(%s,%s,%s,%s)",
+    (99, 99, 99, "2022-12-10")
+)
+
+run(
+    "CALL UpdateBooking(%s,%s)",
+    (99, "2022-01-10")
+)
+
+run(
+    "CALL CancelBooking(%s)",
+    (99,)
+)
+
+conn.commit()
+cursor.close()
+conn.close()
